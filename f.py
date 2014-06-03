@@ -25,23 +25,23 @@ def askFile():
  
 
 def play(song):
-    pygame.mixer.init(44100, -16, 2, 2048)
-    global a
-    if a == False:
-        pygame.mixer.music.load(song)
+    pygame.mixer.init(44100, -16, 2, 2048) 
+    pygame.mixer.music.load(song)
+    mf = mad.MadFile(song)
+    track_length_in_mseconds = mf.total_time() + 1
     if c1.get() == 0:
         pygame.mixer.music.play()
     else:
         pygame.mixer.music.play(-1)
     while pygame.mixer.music.get_busy():
-        pos = pygame.mixer.music.get_pos()/ 1000
-        #sys.stdout.write('\r' + str(datetime.datetime.fromtimestamp(pos).strftime('%M:%S')))          #  --or--   str(datetime.datetime.fromtimestamp(pos))[-5:]
-        #sys.stdout.flush()
+        if pygame.mixer.music.get_pos() <= track_length_in_mseconds:
+            pos = pygame.mixer.music.get_pos()/ 1000       
+        else:
+            var =  track_length_in_mseconds - 20
+            pos =  (pygame.mixer.music.get_pos() - var) / 1000
         a = '\r' + str(datetime.datetime.fromtimestamp(pos).strftime('%M:%S'))
         timelab.configure(text=a)
-        time.sleep(1.1)
-    a = True    
-    play(song)   
+        time.sleep(1)
 
 
 def play_pause():
