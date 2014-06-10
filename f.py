@@ -4,7 +4,7 @@ import pygame,Tkinter, tkMessageBox,tkFileDialog, datetime, time, sys, threading
 root = Tkinter.Tk()
 root.title("Gazan")
 root.geometry('150x200')
-#root.iconbitmap("@icon.xbm")
+root.iconbitmap("@icon.xbm")
 
 fn = ""
 paused = False
