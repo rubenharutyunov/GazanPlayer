@@ -22,21 +22,24 @@ class GazanPlayer():
 
     # It's very important, without it player can't exit after playing!!!
     def waitForExit(self, dt):
-        if self.player.playing:
-            title = self.player.source.info.title 
-            author = self.player.source.info.author
-            album =  self.player.source.info.album 
-            genre = self.player.source.info.genre
-            lab2.configure(text=author + ' '  + ' / ' + title + ' / ' + album + ' / ' + genre) 
-            #print dir(self.player.source.info)
-            a = '%s.jpg' % (self.player.source.info.album)
-            original = Image.open(a)
-            resized = original.resize((300, 300),Image.ANTIALIAS)
-            img2 = ImageTk.PhotoImage(resized)
-            labArt.configure(image=img2)
-            time.sleep(5)
-        else:
-            labArt.configure(image=img20)
+        try:
+            if self.player.playing:
+                title = [self.player.source.info.title, "Unknown"][self.player.source.info.title == '']
+                author = [self.player.source.info.author, "Unknown"][self.player.source.info.author == '']
+                album =  [self.player.source.info.album, "Unknown"][self.player.source.info.album == '']
+                genre = [self.player.source.info.genre, "Unknown"][self.player.source.info.genre == '']
+                lab2.configure(text=author + ' '  + ' / ' + title + ' / ' + album + ' / ' + genre) 
+                #print dir(self.player.source.info)
+                a = '%s.jpg' % (self.player.source.info.album)
+                original = Image.open(a)
+                resized = original.resize((300, 300),Image.ANTIALIAS)
+                img2 = ImageTk.PhotoImage(resized)
+                labArt.configure(image=img2)
+                time.sleep(5)
+            else:
+                labArt.configure(image=img20)
+        except:
+            labArt.configure(image=img20)   
 
         '''if not self.player.playing: 
             pyglet.app.exit()    # Exit!  ''' 
@@ -58,7 +61,15 @@ class GazanPlayer():
             self.player.queue(self.song)  # Put the file into a queue
             self.player.eos_action = self.player.EOS_NEXT # It's necessary if I want music to loop
             fileMp3 = File(file)
-            artwork = fileMp3.tags['APIC:'].data
+            if file.endswith('.mp3'):
+                artwork = fileMp3.tags['APIC:'].data
+            elif file.endswith('.m4a') or file.endswith('.mp4'): 
+                artwork = fileMp3.tags['covr'][0]
+            elif file.endswith('.flac'):  
+                artwork =  fileMp3.pictures[0].data  
+            else:
+                artwork =  ''
+            
             with open('%s.jpg' % (self.song.info.album), 'wb') as img:
                  img.write(artwork) # write artwork to new image
 
@@ -106,7 +117,7 @@ def timer():
 
 def nt():
     song = "06. Eatin.m4a"
-    th = threading.Thread(target=test.playFile, args=(fileGrabber.grabb_music_file_types('*.mp3'),))
+    th = threading.Thread(target=test.playFile, args=(fileGrabber.grabb_music_files(),))
     th.daemon = True
     th.start()
     time.sleep(0.5)
@@ -118,7 +129,7 @@ def nt2():
     th2.start()
 nt2()
 root = Tkinter.Tk()
-root.geometry('310x520')
+root.geometry('510x520')
 but = Tkinter.Button(root, text="Play", command=nt).pack()
 but2 = Tkinter.Button(root, text="Pause", command=test.pause).pack()
 but3 = Tkinter.Button(root, text="Unpause", command=test.unpause).pack()
