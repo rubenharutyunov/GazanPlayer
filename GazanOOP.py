@@ -147,6 +147,7 @@ class Gui(PyQT.PlayerGui):
 
  
 
+
 app = QtGui.QApplication(sys.argv)
 tg = Gui()
 tg.show()
