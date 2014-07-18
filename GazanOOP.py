@@ -1,97 +1,32 @@
-#!/usr/bin/python
+#!/usr/bin/python2
 # -*- coding: utf-8 -*-
 import pyglet
 import time
 import datetime
-import sys
+import sys, os
 import datetime
 import threading
 import Tkinter  
-import fileGrabber 
+import fileGrabber, PyQT
 from mutagen import File
 from PIL import ImageTk, Image# imports
+from PySide import QtCore, QtGui
 
 
 class GazanPlayer():
 
     def __init__(self):
-        self.play = False  # I don't need it, but let it be :-)
+        #self.play = []  # I don't need it, but let it be :-)
         self.player = pyglet.media.Player()  # Initlialize the player
+        self.player.eos_action = self.player.EOS_NEXT # It's necessary if I want music to loop
         self.pos = 1
-        pyglet.clock.schedule_interval(self.waitForExit, 1)
-
-    # It's very important, without it player can't exit after playing!!!
-    def waitForExit(self, dt):
-        try:
-            if self.player.playing:
-                title = [self.player.source.info.title, "Unknown"][self.player.source.info.title == '']
-                author = [self.player.source.info.author, "Unknown"][self.player.source.info.author == '']
-                album =  [self.player.source.info.album, "Unknown"][self.player.source.info.album == '']
-                genre = [self.player.source.info.genre, "Unknown"][self.player.source.info.genre == '']
-                lab2.configure(text=author + ' '  + ' / ' + title + ' / ' + album + ' / ' + genre) 
-                #print dir(self.player.source.info)
-                a = '%s.jpg' % (self.player.source.info.album)
-                original = Image.open(a)
-                resized = original.resize((300, 300),Image.ANTIALIAS)
-                img2 = ImageTk.PhotoImage(resized)
-                labArt.configure(image=img2)
-                time.sleep(5)
-            else:
-                labArt.configure(image=img20)
-        except:
-            labArt.configure(image=img20)   
-
-        '''if not self.player.playing: 
-            pyglet.app.exit()    # Exit!  ''' 
                 
-       
-             
-    def hgh(self):
-        nt2()
-        self.player.play()  # Start playing
-        
-            # Call waitForExit when song is over
-        pyglet.app.run()  # Run!
-        print "done!"   # Only for tests        
-
-
-    def playFile(self, files):
-        for file in files:
-            self.song = pyglet.media.load(file)  # Load the file
-            self.player.queue(self.song)  # Put the file into a queue
-            self.player.eos_action = self.player.EOS_NEXT # It's necessary if I want music to loop
-            fileMp3 = File(file)
-            if file.endswith('.mp3'):
-                artwork = fileMp3.tags['APIC:'].data
-            elif file.endswith('.m4a') or file.endswith('.mp4'): 
-                artwork = fileMp3.tags['covr'][0]
-            elif file.endswith('.flac'):  
-                artwork =  fileMp3.pictures[0].data  
-            else:
-                artwork =  ''
-            
-            with open('%s.jpg' % (self.song.info.album), 'wb') as img:
-                 img.write(artwork) # write artwork to new image
-
-   
-
-        '''nt2()
-        self.player.play()  # Start playing
-        pyglet.clock.schedule_interval(self.waitForExit, 1)
-            # Call waitForExit when song is over
-        pyglet.app.run()  # Run!
-        print "done!"   # Only for tests'''
-
-        self.hgh()
-        
-
     def pause(self):  # Simple pause :-)
         self.player.pause()
 
     def unpause(self):  # Simple unpause :-)
         self.player.play()
         threading.Thread(target=self.hgh).start()
-        nt2()
 
     def seek_five_secs(self):  # Simple seek, maybe I'll make it better
         self.player.seek(self.player.time+5)  # Seek to position
@@ -103,51 +38,116 @@ class GazanPlayer():
         self.player.next()    
 
 
+class PlayThread(QtCore.QThread):
+  def __init__(self, ex=None, files=[], parent=None):
+    super(PlayThread, self).__init__(parent)
+    self.test = ex
+    self.files = files
 
-#----------------------Only-for-tests-I'll-use-PyQt-----------------------
+
+  def __del__(self):
+    self.wait()
+
+  def playFile(self):
+        for file in self.files:
+            self.song = pyglet.media.load(file)  # Load the file
+            self.test.player.queue(self.song)  # Put the file into a queue
+            #self.play.append(self.song.info.title)
+            try:
+                fileMp3 = File(file)
+                if file.endswith('.mp3'):
+                    artwork = fileMp3.tags['APIC:'].data
+                elif file.endswith('.m4a') or file.endswith('.mp4'): 
+                    artwork = fileMp3.tags['covr'][0]
+                elif file.endswith('.flac'):  
+                    artwork =  fileMp3.pictures[0].data  
+                else:
+                    artwork =  ''
+                if artwork and self.song.info.album:
+                    with open('%s.jpg' % (self.song.info.album), 'wb') as img:
+                         img.write(artwork) # write artwork to new image  
+            except KeyError:
+                pass          
+                          
+
+  def run(self):
+    self.playFile()
+    self.test.player.play() 
+    
+
+class ConfThread(QtCore.QThread):
+    def __init__(self, ex=None, parent=None):
+        super(ConfThread, self).__init__(parent)
+        self.test = ex
+        
+    def __del__(self):
+        self.wait()
+
+    def conf(self):
+        while self.test.player.playing:
+            #print  "Current: " + " " + self.play[self.play.index(self.player.source.info.title)]
+            title = [self.test.player.source.info.title,  "Unknown"][self.test.player.source.info.title == '']
+            author = [self.test.player.source.info.author, "Unknown"][self.test.player.source.info.author == '']
+            album =  [self.test.player.source.info.album, "Unknown"][self.test.player.source.info.album == '']
+            genre = [self.test.player.source.info.genre, "Unknown"][self.test.player.source.info.genre == '']
+            tg.labTitle.setText(title) 
+            tg.labTitle.setToolTip(title)
+
+            tg.labArtist.setText(author) 
+            tg.labArtist.setToolTip(author)
+
+            tg.labAlbum.setText(album) 
+            tg.labAlbum.setToolTip(album)
+
+            tg.labYear.setText(genre) 
+            tg.labYear.setToolTip(album)
+
+            a = '%s.jpg' % (self.test.player.source.info.album)
+            tg.timer.display(str(datetime.datetime.fromtimestamp(test.player.time).strftime('%M:%S')))    
+            time.sleep(1)  
+            if os.path.isfile(a):
+                self.emit(QtCore.SIGNAL("mysignal(QString)"), a)
+            else:
+                self.emit(QtCore.SIGNAL("mysignal(QString)"), 'logo.png')    
+
+    def run(self):
+        self.conf()
+    
+
 test = GazanPlayer()
 
 
-def timer():
-    while test.player.playing:
-        lab.configure(
-            text=str(datetime.datetime.fromtimestamp(test.player.time).strftime('%M:%S')))
-        time.sleep(1.0)
+class Gui(PyQT.PlayerGui):
+    def __init__(self, parent=None):
+        PyQT.PlayerGui.__init__(self, parent)
+        self.th = ConfThread(ex=test)
+        self.th2 = PlayThread(ex=test, files=fileGrabber.grabb_music_files())
+        self.connect(self.butPlay, QtCore.SIGNAL("clicked()"), self.start)
+        self.connect(self.th, QtCore.SIGNAL("mysignal(QString)"), self.on_change, QtCore.Qt.QueuedConnection)
+        self.connect(self.th2, QtCore.SIGNAL("finished()"), self.on_finished)
+        self.connect(self.butNext, QtCore.SIGNAL('clicked()'), test.next)
+        
 
+    def start(self):  
+        print 'test'  
+        self.th2.start(QtCore.QThread.Priority.TimeCriticalPriority)
+        time.sleep(1)
+        self.th.start()   
 
-def nt():
-    song = "06. Eatin.m4a"
-    th = threading.Thread(target=test.playFile, args=(fileGrabber.grabb_music_files(),))
-    th.daemon = True
-    th.start()
-    time.sleep(0.5)
-    nt2()
+    def on_change(self, s):
+        self.labArt.setFixedHeight(300)
+        self.labArt.setFixedWidth(300)
+        #print os.path.isfile(s), s
+        self.labArt.setPixmap(QtGui.QPixmap(s))
+        
+        #self.labArt.setPixmap(QtGui.QPixmap('logo.png'))
 
+    def on_finished(self):
+        pass
 
-def nt2():
-    th2 = threading.Thread(target=timer)
-    th2.start()
-nt2()
-root = Tkinter.Tk()
-root.geometry('510x520')
-but = Tkinter.Button(root, text="Play", command=nt).pack()
-but2 = Tkinter.Button(root, text="Pause", command=test.pause).pack()
-but3 = Tkinter.Button(root, text="Unpause", command=test.unpause).pack()
-but4 = Tkinter.Button(
-    root, text="+5 second", command=test.seek_five_secs).pack()
-but5 = Tkinter.Button(
-    root, text="-5 second", command=test.seek_minus_file_secs).pack()
-but6=Tkinter.Button(root, text="next", command=test.next).pack()
-lab = Tkinter.Label(root, text="")
-lab.pack()
-lab2 = Tkinter.Label(root, text="Information")
-lab2.pack()
-labArt = Tkinter.Label(root, text='album art')
+ 
 
-img20 = ImageTk.PhotoImage(Image.open('logo.png'))
-labArt.configure(image=img20)
-labArt.pack()
-root.mainloop()
-
-# test.playFile("Intro.mp3")
-test.pause()
+app = QtGui.QApplication(sys.argv)
+tg = Gui()
+tg.show()
+app.exec_()
