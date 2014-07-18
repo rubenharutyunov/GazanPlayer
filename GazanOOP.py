@@ -145,9 +145,6 @@ class Gui(PyQT.PlayerGui):
     def on_finished(self):
         pass
 
- 
-
-
 app = QtGui.QApplication(sys.argv)
 tg = Gui()
 tg.show()
