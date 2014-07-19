@@ -16,7 +16,7 @@ from PySide import QtCore, QtGui
 class GazanPlayer():
 
     def __init__(self):
-        #self.play = []  # I don't need it, but let it be :-)
+        self.play = []  # I don't need it, but let it be :-)
         self.player = pyglet.media.Player()  # Initlialize the player
         self.player.eos_action = self.player.EOS_NEXT # It's necessary if I want music to loop
         self.pos = 1
@@ -52,7 +52,8 @@ class PlayThread(QtCore.QThread):
         for file in self.files:
             self.song = pyglet.media.load(file)  # Load the file
             self.test.player.queue(self.song)  # Put the file into a queue
-            #self.play.append(self.song.info.title)
+            if self.song.info.title not in self.test.play:
+                self.test.play.append(self.song.info.title)
             try:
                 fileMp3 = File(file)
                 if file.endswith('.mp3'):
@@ -106,9 +107,9 @@ class ConfThread(QtCore.QThread):
             tg.timer.display(str(datetime.datetime.fromtimestamp(test.player.time).strftime('%M:%S')))    
             time.sleep(1)  
             if os.path.isfile(a):
-                self.emit(QtCore.SIGNAL("mysignal(QString)"), a)
+                self.emit(QtCore.SIGNAL("mysignal(QString, QStringList)"), a, self.test.play)
             else:
-                self.emit(QtCore.SIGNAL("mysignal(QString)"), 'logo.png')    
+                self.emit(QtCore.SIGNAL("mysignal(QString, QStringList)"), 'logo.png', self.test.play)    
 
     def run(self):
         self.conf()
@@ -123,9 +124,11 @@ class Gui(PyQT.PlayerGui):
         self.th = ConfThread(ex=test)
         self.th2 = PlayThread(ex=test, files=fileGrabber.grabb_music_files())
         self.connect(self.butPlay, QtCore.SIGNAL("clicked()"), self.start)
-        self.connect(self.th, QtCore.SIGNAL("mysignal(QString)"), self.on_change, QtCore.Qt.QueuedConnection)
+        self.connect(self.th, QtCore.SIGNAL("mysignal(QString, QStringList)"), self.on_change, QtCore.Qt.QueuedConnection)
         self.connect(self.th2, QtCore.SIGNAL("finished()"), self.on_finished)
         self.connect(self.butNext, QtCore.SIGNAL('clicked()'), test.next)
+        self.slider.sliderMoved.connect(self.handleSlider)
+        
         
 
     def start(self):  
@@ -134,16 +137,25 @@ class Gui(PyQT.PlayerGui):
         time.sleep(1)
         self.th.start()   
 
-    def on_change(self, s):
+    def on_change(self, s, lst):
         self.labArt.setFixedHeight(300)
         self.labArt.setFixedWidth(300)
         #print os.path.isfile(s), s
         self.labArt.setPixmap(QtGui.QPixmap(s))
-        
+        self.add_list(lst)
+        self.set_current(lst.index(test.player.source.info.title))
+        self.slider.setMaximum(test.player.source.duration)
+        self.slider.setValue(test.player.time)
         #self.labArt.setPixmap(QtGui.QPixmap('logo.png'))
 
     def on_finished(self):
         pass
+
+    def handleSlider(self, val):
+        if val > 0:
+            test.player.seek(val)  
+        else:
+            test.player.seek(val+1)      
 
 app = QtGui.QApplication(sys.argv)
 tg = Gui()

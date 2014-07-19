@@ -12,10 +12,11 @@ class PlayerGui(QtGui.QWidget):
         self.installEventFilter(self)
         self.test.horizontalHeader().setResizeMode(QtGui.QHeaderView.Stretch)
 
+        self.slider = QtGui.QSlider(QtCore.Qt.Horizontal)
+        self.slider.setMinimum(0)
         
-
         self.setGeometry(600, 300, 600, 500)
-        self.setMinimumSize(400, 520)
+        self.setMinimumSize(400, 530)
         self.setWindowTitle("GazanPlayer v0.1")
         self.setWindowIcon(QtGui.QIcon("icon.ico"))
 
@@ -63,8 +64,15 @@ class PlayerGui(QtGui.QWidget):
         self.layout.addWidget(self.labArt,0,0,1,0, QtCore.Qt.AlignHCenter)
         for i in labels:
             i.setMaximumWidth(90);
-            i.setStyleSheet('QLabel { border: 1px solid #cacaca; }')
+            i.setStyleSheet('''QLabel { 
+                                    border-style: solid;
+                                    border-width: 1px;
+                                    border-color: #cacaca;
+                                    border-radius: 6px;
+                                        }'''
+                            )
             self.layout.addWidget(i, 1, labels.index(i), QtCore.Qt.AlignVCenter)
+
         self.layout.setSpacing(10)    
         self.layout.addWidget(self.butPrev, 4, 1)
         self.layout.addWidget(self.butNext, 4, 2)
@@ -76,6 +84,7 @@ class PlayerGui(QtGui.QWidget):
 
         self.lmain.addLayout(self.layout, 0,0)
         self.lmain.addLayout(self.ltest, 0, 1)
+        self.lmain.addWidget(self.slider, 1, 0,1,0)
 
         self.setLayout(self.ltest)
 
