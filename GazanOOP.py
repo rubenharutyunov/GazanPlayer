@@ -6,7 +6,6 @@ import datetime
 import sys, os
 import datetime
 import threading
-import Tkinter  
 import fileGrabber, PyQT
 from mutagen import File
 from PIL import ImageTk, Image# imports
@@ -52,6 +51,7 @@ class PlayThread(QtCore.QThread):
         for file in self.files:
             self.song = pyglet.media.load(file)  # Load the file
             self.test.player.queue(self.song)  # Put the file into a queue
+            #self.test.player.volume = 0.1
             if self.song.info.title not in self.test.play:
                 self.test.play.append(self.song.info.title)
             try:
@@ -122,20 +122,24 @@ class Gui(PyQT.PlayerGui):
     def __init__(self, parent=None):
         PyQT.PlayerGui.__init__(self, parent)
         self.th = ConfThread(ex=test)
-        self.th2 = PlayThread(ex=test, files=fileGrabber.grabb_music_files())
+        
         self.connect(self.butPlay, QtCore.SIGNAL("clicked()"), self.start)
         self.connect(self.th, QtCore.SIGNAL("mysignal(QString, QStringList)"), self.on_change, QtCore.Qt.QueuedConnection)
-        self.connect(self.th2, QtCore.SIGNAL("finished()"), self.on_finished)
+        #self.connect(self.th2, QtCore.SIGNAL("finished()"), self.on_finished)
         self.connect(self.butNext, QtCore.SIGNAL('clicked()'), test.next)
         self.slider.sliderMoved.connect(self.handleSlider)
         
-        
-
     def start(self):  
-        print 'test'  
-        self.th2.start(QtCore.QThread.Priority.TimeCriticalPriority)
-        time.sleep(1)
-        self.th.start()   
+        self.fname = QtGui.QFileDialog.getExistingDirectory(self, 'Open file')
+        if self.fname:
+            if test.player.playing:
+                test.player.pause()
+                test.__init__()
+            self.fname = self.fname.encode('utf-8') 
+            self.th2 = PlayThread(ex=test, files=fileGrabber.grabb_music_files_from_dir(self.fname))
+            self.th2.start(QtCore.QThread.Priority.TimeCriticalPriority)
+            time.sleep(1)
+            self.th.start()   
 
     def on_change(self, s, lst):
         self.labArt.setFixedHeight(300)
@@ -144,7 +148,7 @@ class Gui(PyQT.PlayerGui):
         self.labArt.setPixmap(QtGui.QPixmap(s))
         self.add_list(lst)
         self.set_current(lst.index(test.player.source.info.title))
-        self.slider.setMaximum(test.player.source.duration)
+        self.slider.setMaximum(test.player.source.duration-1)
         self.slider.setValue(test.player.time)
         #self.labArt.setPixmap(QtGui.QPixmap('logo.png'))
 

@@ -14,7 +14,7 @@ class PlayerGui(QtGui.QWidget):
 
         self.slider = QtGui.QSlider(QtCore.Qt.Horizontal)
         self.slider.setMinimum(0)
-        
+
         self.setGeometry(600, 300, 600, 500)
         self.setMinimumSize(400, 530)
         self.setWindowTitle("GazanPlayer v0.1")
@@ -86,7 +86,7 @@ class PlayerGui(QtGui.QWidget):
         self.lmain.addLayout(self.ltest, 0, 1)
         self.lmain.addWidget(self.slider, 1, 0,1,0)
 
-        self.setLayout(self.ltest)
+        self.setLayout(self.ltest)  
 
     def close(self):
         import sys
