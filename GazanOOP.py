@@ -10,8 +10,8 @@ import fileGrabber, PyQT
 from mutagen import File
 from PIL import ImageTk, Image# imports
 from PySide import QtCore, QtGui
-
-
+reload(sys)
+sys.setdefaultencoding('utf-8')
 class GazanPlayer():
 
     def __init__(self):
@@ -91,17 +91,18 @@ class ConfThread(QtCore.QThread):
             author = [self.test.player.source.info.author, "Unknown"][self.test.player.source.info.author == '']
             album =  [self.test.player.source.info.album, "Unknown"][self.test.player.source.info.album == '']
             genre = [self.test.player.source.info.genre, "Unknown"][self.test.player.source.info.genre == '']
-            tg.labTitle.setText(title) 
-            tg.labTitle.setToolTip(title)
+            #print type(unicode(title))
+            tg.labTitle.setText(unicode(title))
+            tg.labTitle.setToolTip(unicode(title))
 
-            tg.labArtist.setText(author) 
-            tg.labArtist.setToolTip(author)
+            tg.labArtist.setText(unicode(author)) 
+            tg.labArtist.setToolTip(unicode(author))
 
-            tg.labAlbum.setText(album) 
-            tg.labAlbum.setToolTip(album)
+            tg.labAlbum.setText(unicode(album)) 
+            tg.labAlbum.setToolTip(unicode(album))
 
-            tg.labYear.setText(genre) 
-            tg.labYear.setToolTip(album)
+            tg.labYear.setText(unicode(genre)) 
+            tg.labYear.setToolTip(unicode(genre))
 
             a = '%s.jpg' % (self.test.player.source.info.album)
             tg.timer.display(str(datetime.datetime.fromtimestamp(test.player.time).strftime('%M:%S')))    
@@ -137,15 +138,15 @@ class Gui(PyQT.PlayerGui):
                 test.__init__()
             self.fname = self.fname.encode('utf-8') 
             self.th2 = PlayThread(ex=test, files=fileGrabber.grabb_music_files_from_dir(self.fname))
-            self.th2.start(QtCore.QThread.Priority.TimeCriticalPriority)
+            self.th2.start()
             time.sleep(1)
-            self.th.start()   
+            self.th.start(QtCore.QThread.Priority.TimeCriticalPriority)   
 
     def on_change(self, s, lst):
         self.labArt.setFixedHeight(300)
         self.labArt.setFixedWidth(300)
-        #print os.path.isfile(s), s
-        self.labArt.setPixmap(QtGui.QPixmap(s))
+        self.labArt.setPixmap(QtGui.QPixmap(unicode(s.encode('iso8859-1'))))
+        lst = [unicode(x.encode('iso8859-1')) for x in lst]
         self.add_list(lst)
         self.set_current(lst.index(test.player.source.info.title))
         self.slider.setMaximum(test.player.source.duration-1)
