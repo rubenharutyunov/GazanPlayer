@@ -85,32 +85,33 @@ class ConfThread(QtCore.QThread):
         self.wait()
 
     def conf(self):
-        while self.test.player.playing:
-            #print  "Current: " + " " + self.play[self.play.index(self.player.source.info.title)]
-            title = [self.test.player.source.info.title,  "Unknown"][self.test.player.source.info.title == '']
-            author = [self.test.player.source.info.author, "Unknown"][self.test.player.source.info.author == '']
-            album =  [self.test.player.source.info.album, "Unknown"][self.test.player.source.info.album == '']
-            genre = [self.test.player.source.info.genre, "Unknown"][self.test.player.source.info.genre == '']
-            #print type(unicode(title))
-            tg.labTitle.setText(unicode(title))
-            tg.labTitle.setToolTip(unicode(title))
+        while True:
+            if self.test.player.playing:
+                #print  "Current: " + " " + self.play[self.play.index(self.player.source.info.title)]
+                title = [self.test.player.source.info.title,  "Unknown"][self.test.player.source.info.title == '']
+                author = [self.test.player.source.info.author, "Unknown"][self.test.player.source.info.author == '']
+                album =  [self.test.player.source.info.album, "Unknown"][self.test.player.source.info.album == '']
+                genre = [self.test.player.source.info.genre, "Unknown"][self.test.player.source.info.genre == '']
+                #print type(unicode(title))
+                tg.labTitle.setText(unicode(title))
+                tg.labTitle.setToolTip(unicode(title))
 
-            tg.labArtist.setText(unicode(author)) 
-            tg.labArtist.setToolTip(unicode(author))
+                tg.labArtist.setText(unicode(author)) 
+                tg.labArtist.setToolTip(unicode(author))
 
-            tg.labAlbum.setText(unicode(album)) 
-            tg.labAlbum.setToolTip(unicode(album))
+                tg.labAlbum.setText(unicode(album)) 
+                tg.labAlbum.setToolTip(unicode(album))
 
-            tg.labYear.setText(unicode(genre)) 
-            tg.labYear.setToolTip(unicode(genre))
+                tg.labYear.setText(unicode(genre)) 
+                tg.labYear.setToolTip(unicode(genre))
 
-            a = '%s.jpg' % (self.test.player.source.info.album)
-            tg.timer.display(str(datetime.datetime.fromtimestamp(test.player.time).strftime('%M:%S')))    
-            time.sleep(1)  
-            if os.path.isfile(a):
-                self.emit(QtCore.SIGNAL("mysignal(QString, QStringList)"), a, self.test.play)
-            else:
-                self.emit(QtCore.SIGNAL("mysignal(QString, QStringList)"), 'logo.png', self.test.play)    
+                a = '%s.jpg' % (self.test.player.source.info.album)
+                tg.timer.display(str(datetime.datetime.fromtimestamp(test.player.time).strftime('%M:%S')))    
+                time.sleep(1)  
+                if os.path.isfile(a):
+                    self.emit(QtCore.SIGNAL("mysignal(QString, QStringList)"), a, self.test.play)
+                else:
+                    self.emit(QtCore.SIGNAL("mysignal(QString, QStringList)"), 'logo.png', self.test.play)    
 
     def run(self):
         self.conf()
@@ -140,7 +141,7 @@ class Gui(PyQT.PlayerGui):
             self.th2 = PlayThread(ex=test, files=fileGrabber.grabb_music_files_from_dir(self.fname))
             self.th2.start()
             time.sleep(1)
-            self.th.start(QtCore.QThread.Priority.TimeCriticalPriority)   
+            self.th.start()   
 
     def on_change(self, s, lst):
         self.labArt.setFixedHeight(300)
