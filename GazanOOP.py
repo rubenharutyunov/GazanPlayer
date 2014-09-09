@@ -7,6 +7,7 @@ import sys, os
 import datetime
 import threading
 import fileGrabber, PyQT
+from db import DBConnect
 from mutagen import File
 from PIL import ImageTk, Image# imports
 from PySide import QtCore, QtGui
@@ -52,13 +53,14 @@ class PlayThread(QtCore.QThread):
         Also creates grabb artwork images and save them in file 
             TODO: program should save images in sqlite database, not files.
         '''
-        
+        untitled_count = 0 # Count of intitled songs (for list)
         for file in self.files:
             self.song = pyglet.media.load(file)  # Load the file
             self.instance.player.queue(self.song)  # Put the file into a queue
             #self.instance.player.volume = 0.1
-            if self.song.info.title not in self.instance.play_files:
-                self.instance.play_files.append(self.song.info.title)  # add song to list
+            #if self.song.info.title not in self.instance.play_files:
+            if not self.song.info.title: self.song.info.title =('Unknown%d' % untitled_count if untitled_count else 'Unknown'); untitled_count+=1 
+            self.instance.play_files.append(self.song.info.title)  # add song to list
             try:
                 fileMp3 = File(file)   # get artwork 
                 if file.endswith('.mp3'):
@@ -70,9 +72,11 @@ class PlayThread(QtCore.QThread):
                 else:
                     artwork =  ''
                 if artwork and self.song.info.album:
-                    with open('%s.jpg' % (self.song.info.album), 'wb') as img:
-                         img.write(artwork) # write artwork to new image  
-            except KeyError:
+                    database = DBConnect('GPlayer.db')
+                    database.add_image(self.song.info.album, artwork)
+                    #with open('%s.jpg' % (self.song.info.album), 'wb') as img:
+                         #img.write(artwork) # write artwork to new image  
+            except (KeyError, TypeError) as e:
                 pass          
                           
 
@@ -98,7 +102,7 @@ class ConfThread(QtCore.QThread):
         while True:
             if self.instance.player.playing:
                 # Info or "unknown"
-                title = [self.instance.player.source.info.title,  "Unknown"][self.instance.player.source.info.title == '']
+                title = [self.instance.player.source.info.title,"Unknown"][self.instance.player.source.info.title.startswith('Unknown')]  
                 author = [self.instance.player.source.info.author, "Unknown"][self.instance.player.source.info.author == '']
                 album =  [self.instance.player.source.info.album, "Unknown"][self.instance.player.source.info.album == '']
                 genre = [self.instance.player.source.info.genre, "Unknown"][self.instance.player.source.info.genre == '']
@@ -121,11 +125,8 @@ class ConfThread(QtCore.QThread):
 
                 # Send signal every second   
                 time.sleep(1)  
-                a = '%s.jpg' % (self.instance.player.source.info.album)
-                if os.path.isfile(a):
-                    self.emit(QtCore.SIGNAL("mysignal(QString, QStringList)"), a, self.instance.play_files)
-                else:
-                    self.emit(QtCore.SIGNAL("mysignal(QString, QStringList)"), 'logo.png', self.instance.play_files)  
+                a =  self.instance.player.source.info.album
+                self.emit(QtCore.SIGNAL("mysignal(QString, QStringList)"), a, self.instance.play_files)
             else:  
                 time.sleep(1)    # Sleep to not to use CPU!    
 
@@ -156,18 +157,18 @@ class Gui(PyQT.PlayerGui):
         if len(sys.argv) > 1:
             self.start()
     
-    def check_state(self):
+    def reload_tracks(self):
         '''
-        If playing - pause and load new files
+        If playing - pause and load new tracks to list
         '''
         if instance.player.playing:
             instance.player.pause()
-            instance.__init__()
+        instance.__init__()
 
     def start(self):  
         if len(sys.argv) > 1 and self.argv_play_count < 1:  # Play files from args 
             self.files = sys.argv[1:]
-            self.check_state()
+            self.reload_tracks()
             self.th2 = PlayThread(ex=instance, files=self.files)
             self.th2.start()
             self.th.start() 
@@ -176,7 +177,7 @@ class Gui(PyQT.PlayerGui):
             self.dirname = QtGui.QFileDialog.getExistingDirectory(self, 'Open file')  # Open file dialog
 
         if self.dirname:
-            self.check_state()
+            self.reload_tracks()
             self.th2 = PlayThread(ex=instance, files=fileGrabber.grabb_music_files_from_dir(self.dirname))
             self.th2.start()
             self.th.start()   
@@ -184,8 +185,16 @@ class Gui(PyQT.PlayerGui):
     def on_change(self, s, lst):
         self.labArt.setFixedHeight(300)
         self.labArt.setFixedWidth(300)
-        self.labArt.setPixmap(QtGui.QPixmap(unicode(s.encode('iso8859-1'))))
-        lst = [unicode(x.encode('iso8859-1')) or u'Unknown' for x in lst ]
+        database = DBConnect('GPlayer.db')
+        try:
+            data = database.get_image(unicode(s.encode('iso8859-1')))
+            pm = QtGui.QPixmap()
+            pm.loadFromData(QtCore.QByteArray(data))
+            self.labArt.setPixmap(pm)
+        except:
+            self.labArt.setPixmap('logo.png')
+        
+        lst = [unicode(x.encode('iso8859-1')) for x in lst ]
         self.add_list(lst)  # add list to gui tracks table
         self.set_current(lst.index(instance.player.source.info.title or u'Unknown'))
         self.slider.setMaximum(instance.player.source.duration-1)

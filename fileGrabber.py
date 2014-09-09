@@ -3,7 +3,7 @@
 import glob
 
 def grabb_music_files():
-    file_types = ('*.mp3', '*.wav', '*.ogg', '*.flac', '*.m4a')
+    file_types = ('*.mp3', '*.wav', '*.ogg', '*.flac', '*.m4a', '*.wma')
     files = []
     for file_type in file_types:
         files.extend(glob.glob(file_type))
