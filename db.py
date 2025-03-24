@@ -1,17 +1,16 @@
-#!/usr/bin/python
-#-*- coding: utf-8 -*-
+#!/usr/bin/python3
 import sqlite3 as lite
 import sys
 
 name = 'cover'
-file_name = '/home/ruben/Рабочий стол/Проект-Увечье/cover.jpg'
+file_name = 'logo.png'
 
 
 class DBConnect():
     """Class to work with database"""
     def __init__(self, db_name):
         self.con = lite.connect(db_name)
-        self.con.text_factory = str
+        self.con.text_factory = bytes
         self.cursor = self.con.cursor()
         self.cursor.execute(
             'CREATE TABLE IF NOT EXISTS artworks(name VARCHAR(50) PRIMARY KEY, data BLOB)'
@@ -34,7 +33,7 @@ class DBConnect():
         with self.con:
             self.cursor.execute('SELECT data FROM artworks WHERE name=?', (name,))
             data = self.cursor.fetchone()
-            return str(data[0])
+            return data[0]
 
 
     

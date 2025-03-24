@@ -1,5 +1,4 @@
-#!/usr/bin/python2
-# -*- coding: utf-8 -*-
+#!/usr/bin/python3
 import pyglet
 import time
 import datetime
@@ -9,11 +8,8 @@ import threading
 import fileGrabber, PyQT
 from db import DBConnect
 from mutagen import File
-from PIL import ImageTk, Image# imports
-from PySide import QtCore, QtGui
-
-reload(sys) # Reload sys to set
-sys.setdefaultencoding('utf-8') # the default encoding
+from PIL import Image
+from PySide2 import QtCore, QtGui, QtWidgets
 
 class GazanPlayer():
     '''
@@ -24,7 +20,7 @@ class GazanPlayer():
     def __init__(self):
         self.play_files = []  # List of track titles
         self.player = pyglet.media.Player()  # Initialize the player
-        self.player.eos_action = self.player.EOS_NEXT # It's necessary if I want to play next track from queue
+        #self.player.eos_action = self.player.EOS_NEXT  # Not supported anymore
                 
     def pause(self):  # Simple pause :-)
         self.player.pause()
@@ -33,7 +29,7 @@ class GazanPlayer():
         self.player.play()
 
     def next(self):  # Next :-)
-        self.player.next()    
+        self.player.next_source()
 
 
 class PlayThread(QtCore.QThread):
@@ -61,6 +57,7 @@ class PlayThread(QtCore.QThread):
             #if self.song.info.title not in self.instance.play_files:
             if not self.song.info.title: self.song.info.title =('Unknown%d' % untitled_count if untitled_count else 'Unknown'); untitled_count+=1 
             self.instance.play_files.append(self.song.info.title)  # add song to list
+            self.song.video_format = None # Workaround. Pyglet has segfaults when file is detected as audio
             try:
                 fileMp3 = File(file)   # get artwork 
                 if file.endswith('.mp3'):
@@ -108,27 +105,29 @@ class ConfThread(QtCore.QThread):
                 genre = [self.instance.player.source.info.genre, "Unknown"][self.instance.player.source.info.genre == '']
                 
                 # Set labels
-                gui.labTitle.setText(unicode(title))
-                gui.labTitle.setToolTip(unicode(title))
+                gui.labTitle.setText(title)
+                gui.labTitle.setToolTip(title)
 
-                gui.labArtist.setText(unicode(author)) 
-                gui.labArtist.setToolTip(unicode(author))
+                gui.labArtist.setText(author)
+                gui.labArtist.setToolTip(author)
 
-                gui.labAlbum.setText(unicode(album)) 
-                gui.labAlbum.setToolTip(unicode(album))
+                gui.labAlbum.setText(album)
+                gui.labAlbum.setToolTip(album)
 
-                gui.labYear.setText(unicode(genre)) 
-                gui.labYear.setToolTip(unicode(genre))
+                gui.labYear.setText(genre)
+                gui.labYear.setToolTip(genre)
 
                 # Display time
-                gui.timer.display(str(datetime.datetime.fromtimestamp(self.instance.player.time).strftime('%M:%S'))) 
+                gui.timer.display(datetime.datetime.fromtimestamp(self.instance.player.time).strftime('%M:%S')) 
 
                 # Send signal every second   
                 time.sleep(1)  
-                a =  self.instance.player.source.info.album
-                self.emit(QtCore.SIGNAL("mysignal(QString, QStringList)"), a, self.instance.play_files)
-            else:  
-                time.sleep(1)    # Sleep to not to use CPU!    
+                a = self.instance.player.source.info.album
+                self.signal_album.emit(a, self.instance.play_files)
+            else:
+                time.sleep(1)  # Sleep to avoid excessive CPU usage
+
+    signal_album = QtCore.Signal(str, list)  # Define a new signal for PySide2
 
     def run(self):
         self.conf()
@@ -145,18 +144,33 @@ class Gui(PyQT.PlayerGui):
     def __init__(self, parent=None):
         PyQT.PlayerGui.__init__(self, parent,)
         self.th = ConfThread(ex=instance)
-        self.connect(self.butPlay, QtCore.SIGNAL("clicked()"), self.start)
-        self.connect(self.th, QtCore.SIGNAL("mysignal(QString, QStringList)"), self.on_change, QtCore.Qt.QueuedConnection)
-        #self.connect(self.th2, QtCore.SIGNAL("finished()"), self.on_finished)
-        self.connect(self.butNext, QtCore.SIGNAL('clicked()'), instance.next)
-        self.connect(self.butPause, QtCore.SIGNAL('clicked()'), instance.pause)
-        self.connect(self.butUnPause, QtCore.SIGNAL('clicked()'), instance.play)
+        self.butPlay.clicked.connect(self.start)
+        self.th.signal_album.connect(self.on_change, QtCore.Qt.QueuedConnection)
+        self.butNext.clicked.connect(instance.next)
+        self.butPause.clicked.connect(instance.pause)
+        self.butUnPause.clicked.connect(instance.play)
         self.slider.sliderMoved.connect(self.handleSlider)
         self.dirname = None
         self.argv_play_count = 0
+
+        # Add a QTimer to process pyglet events
+        self.qtimer = QtCore.QTimer()
+        self.qtimer.timeout.connect(self.process_pyglet_events)
+        self.qtimer.start(200)  # Process pyglet events every 200 ms
+
         if len(sys.argv) > 1:
             self.start()
-    
+
+    def process_pyglet_events(self):
+        '''
+        Process pyglet events periodically.
+        Back in 2014,  `player.eos_action = player.EOS_NEXT` handled auto-advancing.
+        However that is not supported anymore and EOS actions are implemented via events.
+        https://pyglet.readthedocs.io/en/latest/programming_guide/media.html#ticking-the-clock
+        '''
+        pyglet.clock.tick()
+        pyglet.app.platform_event_loop.step()
+
     def reload_tracks(self):
         '''
         If playing - pause and load new tracks to list
@@ -174,7 +188,7 @@ class Gui(PyQT.PlayerGui):
             self.th.start() 
             self.argv_play_count += 1 
         else:
-            self.dirname = QtGui.QFileDialog.getExistingDirectory(self, 'Open file')  # Open file dialog
+            self.dirname = QtWidgets.QFileDialog.getExistingDirectory(self, 'Open file')  # Open file dialog
 
         if self.dirname:
             self.reload_tracks()
@@ -187,19 +201,18 @@ class Gui(PyQT.PlayerGui):
         self.labArt.setFixedWidth(300)
         database = DBConnect('GPlayer.db')
         try:
-            data = database.get_image(unicode(s.encode('iso8859-1')))
+            data = database.get_image(s)
             pm = QtGui.QPixmap()
-            pm.loadFromData(QtCore.QByteArray(data))
+            pm.loadFromData(data)
             self.labArt.setPixmap(pm)
-        except:
-            self.labArt.setPixmap('logo.png')
+        except Exception as e:
+            print(f"Error loading image: {e}")
+            self.labArt.setPixmap(QtGui.QPixmap('logo.png'))
         
-        lst = [unicode(x.encode('iso8859-1')) for x in lst ]
         self.add_list(lst)  # add list to gui tracks table
         self.set_current(lst.index(instance.player.source.info.title or u'Unknown'))
         self.slider.setMaximum(instance.player.source.duration-1)
         self.slider.setValue(instance.player.time)
-        #self.labArt.setPixmap(QtGui.QPixmap('logo.png'))
 
     def on_finished(self):
         pass
@@ -212,7 +225,7 @@ class Gui(PyQT.PlayerGui):
             instance.player.seek(val+1)      
 
 
-app = QtGui.QApplication(sys.argv)
+app = QtWidgets.QApplication(sys.argv)
 gui = Gui()    
 gui.show()    
 app.exec_()
